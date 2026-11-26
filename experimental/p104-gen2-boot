@@ -1,0 +1,168 @@
+#!/bin/bash
+set -Eeuo pipefail
+
+KERNEL="7.0.14-30-pve"
+GPU=""
+DRIVER="/lib/modules/$KERNEL/updates/dkms/nvidia.ko"
+
+PATCHED_SHA="13a8cc4c401ce247c06320cb516cb079a11343cc8a5b5aa588f59199778f52dd"
+
+V6="/root/p104-gen2-v10-declare/p104declare.ko"
+V7="/root/p104-gen2-v10-train/p104train.ko"
+
+log() {
+    echo "P104-GEN2: $*"
+}
+
+fail() {
+    log "ERROR: $*"
+    exit 1
+}
+
+cleanup() {
+    rmmod p104train 2>/dev/null || true
+    rmmod p104declare 2>/dev/null || true
+}
+
+trap cleanup EXIT
+
+# Prevent concurrent executions.
+exec 9>/run/p104-gen2-boot.lock
+flock -n 9 || fail "Another unlock attempt is running"
+
+log "Starting PCIe Gen2 initialization"
+
+# 1. Kernel and driver verification
+[[ "$(uname -r)" == "$KERNEL" ]] ||
+    fail "Kernel changed; manual verification required"
+
+[[ -f "$DRIVER" ]] ||
+    fail "NVIDIA driver not found"
+
+echo "$PATCHED_SHA  $DRIVER" |
+    sha256sum -c --status ||
+    fail "NVIDIA patch missing or driver changed"
+
+for module in "$V6" "$V7"; do
+    [[ -f "$module" ]] || fail "Missing $module"
+
+    vermagic=$(modinfo -F vermagic "$module")
+    [[ "$vermagic" == "$KERNEL "* ]] ||
+        fail "Wrong kernel version: $module"
+done
+
+log "NVIDIA patch and kernel modules verified"
+
+
+# Locate P104 by vendor/device ID.
+P104_DEVICES=()
+
+for dev in /sys/bus/pci/devices/*; do
+    [[ -f "$dev/vendor" && -f "$dev/device" ]] || continue
+
+    if [[ "$(<"$dev/vendor")" == "0x10de" &&
+          "$(<"$dev/device")" == "0x1b87" ]]; then
+        P104_DEVICES+=("$(basename "$dev")")
+    fi
+done
+
+[[ ${#P104_DEVICES[@]} -eq 1 ]] ||
+    fail "Expected exactly one P104, found ${#P104_DEVICES[@]}"
+
+GPU="${P104_DEVICES[0]}"
+
+ROOTPORT=$(basename     "$(dirname "$(readlink -f "/sys/bus/pci/devices/$GPU")")")
+
+log "P104 found at $GPU, upstream $ROOTPORT"
+
+# 2. Verify correct device
+[[ "$(cat /sys/bus/pci/devices/$GPU/vendor)" == "0x10de" ]] ||
+    fail "Unexpected PCI vendor"
+
+[[ "$(cat /sys/bus/pci/devices/$GPU/device)" == "0x1b87" ]] ||
+    fail "Unexpected PCI device"
+
+[[ -e "/sys/bus/pci/devices/$ROOTPORT" ]] ||
+    fail "Upstream bridge missing"
+
+[[ "$(<"/sys/bus/pci/devices/$ROOTPORT/class")" == "0x060400" ]] ||
+    fail "Upstream device is not a PCI bridge"
+
+# PCI Express Root Port has PCIe port type 4.
+ROOT_CAP=$(setpci -s "$ROOTPORT" CAP_EXP+02.w) ||
+    fail "Cannot read upstream PCIe capabilities"
+
+(( ((16#$ROOT_CAP >> 4) & 15) == 4 )) ||
+    fail "Upstream device is not a PCIe Root Port"
+
+# 3. NVIDIA initialization
+modprobe nvidia ||
+    fail "Unable to load NVIDIA driver"
+
+# No CUDA workload may be running during unlock.
+if [[ "$(pct status 101)" != "status: stopped" ]]; then
+    fail "Strata CT101 is already running"
+fi
+
+if fuser -s /dev/nvidia* 2>/dev/null; then
+    fail "A process is using NVIDIA devices"
+fi
+
+if lsmod | grep -Eq '^(p104train|p104declare|p104speed|p104audit)[[:space:]]'; then
+    fail "An experimental P104 module is already loaded"
+fi
+
+# PCIe Link Status from PCI configuration space.
+read_link() {
+    local raw value
+    raw=$(setpci -s "$GPU" CAP_EXP+12.w) ||
+        return 1
+    value=$((16#$raw))
+    printf '%d %d\n' "$((value & 15))" "$(((value >> 4) & 63))"
+}
+
+# 4. Declaration and initial retrain (v6)
+log "Applying v6 declaration and SPEED"
+
+insmod "$V6" enable_writes=1 ||
+    fail "v6 failed"
+
+rmmod p104declare ||
+    fail "Unable to unload v6"
+
+cap2=$(setpci -s "$GPU" CAP_EXP+2c.l) ||
+    fail "Cannot read PCIe capabilities"
+
+(( (16#$cap2 & 6) == 6 )) ||
+    fail "Gen2 capability not declared"
+
+read -r speed width < <(read_link)
+
+log "After v6: speed=$speed width=$width"
+
+# 5. Extra retrain only when required.
+if [[ "$speed" != 2 || "$width" != 4 ]]; then
+    log "Requesting additional root-port retrain (v7)"
+
+    insmod "$V7" retrain=1 ||
+        fail "v7 failed"
+
+    rmmod p104train ||
+        fail "Unable to unload v7"
+
+    read -r speed width < <(read_link)
+fi
+
+# 6. Final verification
+if [[ "$speed" != 2 || "$width" != 4 ]]; then
+    fail "Gen2 x4 not achieved: speed=$speed width=$width"
+fi
+
+log "SUCCESS: PCIe Gen2 x4 established"
+
+# 7. Start Strata
+log "Starting CT101"
+pct start 101 ||
+    fail "Could not start Strata container"
+
+log "CT101 started successfully"
