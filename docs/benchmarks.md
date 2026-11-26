@@ -75,5 +75,5 @@ Compared with GTX 1080 alone, adding P104 reduced prefill by **51.9%**, reduced 
 
 - PCIe Gen2 doubled observed **link transfer rate**, but **did not imply faster end-to-end inference** on these Strata workloads.
 - Multiple GPUs can help when prompt processing dominates but hurt when generation dominates, particularly if communication and cache/offload behavior add overhead.
-- The P104 has a known intermittent **405 MHz memory clock** failure under Strata. **It has not been established whether these six benchmark runs all had the normal 5,005 MHz P104 memory clock.** Do not attribute the differences solely to multi-GPU architecture until memory-clock traces accompany each run.
+- **User-confirmed:** The P104 ran at its normal **5,005 MHz memory clock during all benchmark runs**. The separate intermittent 405 MHz Strata issue therefore does **not** explain these throughput results. Individual clock traces were not supplied with this comparison; the clock confirmation is from the tester. Multi-GPU split, cache/offload scheduling, communication overhead and workload characteristics remain possible explanations.
 - Planned comparison: repeat both workloads using GTX 1080 + GTX 1070, with identical Strata/Flash-Next versions, quantization, context and GPU/cache settings, and monitor clocks, power and run-to-run variance.
