@@ -97,7 +97,7 @@ The P104 reaches approximately **81.3%** (host → GPU) and **85.4%** (GPU → h
 
 ### Test reproducibility and caveats
 
-The test's methodology is preserved here, but the short CUDA source has not yet been copied into this repository; reproducing these exact values should use the same pinned buffer and timing method.
+The exact short CUDA source used for this test is archived at [benchmarks/pcie-bandwidth.cu](../benchmarks/pcie-bandwidth.cu). Compile with a compatible CUDA toolkit (for example, `nvcc -O3 -arch=sm_61 -o pcie-bandwidth benchmarks/pcie-bandwidth.cu`) and pass the current CUDA device index as its argument. Do not assume GPU indices remain stable after hardware changes.
 
 - `CUDA0`: GTX 1080, `CUDA1`: P104-100 at the time of testing.
 - Three repeated measurements show very little variability on P104.
