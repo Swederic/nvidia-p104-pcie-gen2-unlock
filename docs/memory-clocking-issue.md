@@ -148,3 +148,26 @@ The operator observed that issuing a **very short Strata request** (e.g. "1+1") 
 ```
 
 This suggests **request-triggered priming within Strata itself** may be more practical than continuous external CUDA keepalive. Potential future implementation: only on demand, issue a small internal request, verify that VRAM reaches 5,005 MHz, and immediately relay the real request. Idle draw can remain low between requests; the transient start-up delay and power cost must be measured. This was a **single reported sequence**, not proof of reliable priming across all model states or request intervals, and it requires a way to reliably identify when the primary request is queued.
+
+## PCIe Link Status sampled during a wrong-clock event (2026-11-26, 22:08)
+
+With Gen2 unlock active, the operator sampled the endpoint's PCIe Link Status via `setpci -s "$GPU" CAP_EXP+12.w` roughly every 0.5 seconds between 22:08:29 and 22:08:41. **All 23 reported samples were `1042`**.
+
+For Link Status `0x1042`, the negotiated speed field is **2 (5 GT/s, Gen2)** and negotiated width field is **4 lanes**; bit 11 (Link Training) is clear. Bit 12 is Slot Clock Configuration. The raw sample should not be mistaken for a full assessment of transient hardware errors or every PCIe data-link state.
+
+Concurrent NVIDIA telemetry:
+
+```text
+22:08:24 P8  139 MHz  405 MHz   5.71 W    0%
+22:08:26 P0 1911 MHz  405 MHz  44.66 W  100%
+22:08:28 P0 1911 MHz  405 MHz  41.58 W  100%
+22:08:30 P0 1911 MHz  405 MHz  24.59 W    0%
+22:08:42 P0 1911 MHz  405 MHz  24.83 W    0%
+22:08:46 P0 1911 MHz  405 MHz  24.82 W    0%
+22:08:48 P0 1202 MHz 5005 MHz  33.73 W    0%
+22:08:52 P8  265 MHz  405 MHz   5.71 W    0%
+```
+
+The VRAM clock remained at 405 MHz after utilization dropped to 0%, then recovered approximately 18 seconds later while still at 0%, before eventually returning to idle. Throughout the overlapping PCIe status sampling, negotiated link rate and width remained Gen2 x4.
+
+**Conclusion:** The sampled wrong-clock interval does **not** coincide with a persistent fallback to Gen1 or an observed Link Training flag. This narrows the diagnosis toward a GPU/driver/firmware clock-state transition or another side-effect of the unlock procedure, but cannot rule out fleeting transitions between 0.5-second samples or other errors. Avoid claims of an identified root cause.
