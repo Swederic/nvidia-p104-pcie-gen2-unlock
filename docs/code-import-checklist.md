@@ -1,0 +1,19 @@
+# Checklist before importing working code
+
+The original code and scripts must be obtained from the test host and reviewed. Do **not** substitute reconstructed code.
+
+- [ ] Copy `/root/p104-gen2-v10-declare/p104declare.c`
+- [ ] Copy `/root/p104-gen2-v10-train/p104train.c`
+- [ ] Copy `/usr/local/sbin/p104-gen2-boot`
+- [ ] Copy the text of `p104-gen2.service`
+- [ ] Locate the exact driver patch script and confirm its pre/post SHA-256 checks
+- [ ] Confirm every PCIe/MMIO register access and the intended GPU/root port
+- [ ] Replace environment-specific paths, hostnames, and BDFs where necessary
+- [ ] Remove accidental credentials, tokens, personal paths, and debug artifacts
+- [ ] Document module build prerequisites for the matching Proxmox kernel
+- [ ] Document rollback for mismatched driver hashes and failed link retraining
+- [ ] Confirm systemd dependencies and that no active CUDA workload is interrupted
+- [ ] Decide on an open-source license for original authored code
+- [ ] Validate the published steps against a clean boot before announcing a release
+
+Do not upload NVIDIA's patched binary module; publish only audited instructions or scripts operating on a user's own installation.
