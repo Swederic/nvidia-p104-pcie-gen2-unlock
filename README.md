@@ -12,7 +12,7 @@ An experimental, documented method for running an NVIDIA P104-100 mining GPU at 
 | Observed Strata transfer rate | Approximately 0.8 GB/s | Approximately 1.66–1.68 GB/s |
 | Reboot persistence | N/A | Gen2 established again by a systemd boot-time procedure |
 
-The transfer-rate figures are observations from this system, **not** a standardized cross-platform PCIe benchmark. Actual LLM throughput depends on model layout, offloading, cache behavior, and other factors.
+The transfer-rate figures are observations from this system, **not** a standardized cross-platform PCIe benchmark. Actual LLM throughput depends on model layout, offloading, cache behavior, and other factors. In measured Flash-Next workloads, adding P104 to a GTX 1080 **sometimes made overall inference slower despite the faster PCIe link**; see [benchmarks](docs/benchmarks.md#strata-flash-next-workload-comparisons-2026-11-26).
 
 ## Tested environment
 
@@ -68,14 +68,16 @@ A separate llama.cpp benchmark successfully reached 5,005 MHz on the P104; an au
 ## Repository roadmap
 
 - [x] Publish the initial method and measured observations
-- [x] Archive the host-supplied kernel-module sources for review (not a supported release)\n- [ ] Audit and harden error handling in the archived sources
-- [x] Document the two-byte patch and add a strict hash-checked helper (no patched NVIDIA binaries)\n- [ ] Validate the helper end-to-end on the verified test host and during clean recovery
-- [ ] Audit and import the boot script and systemd unit
+- [x] Archive the host-supplied kernel-module sources for review (not a supported release)
+- [ ] Audit and harden error handling in the archived sources
+- [x] Document the two-byte patch and add a strict hash-checked helper (no patched NVIDIA binaries)
+- [ ] Validate the helper end-to-end on the verified test host and during clean recovery
+- [x] Archive original boot script and systemd unit for review
 - [ ] Document rollback and boot recovery
 - [ ] Test Gen1 versus Gen2 with the same Strata version and model
 - [ ] Seek independent confirmation on another P104-100
 
-See [investigation](docs/investigation.md), [benchmarks](docs/benchmarks.md), and [known issue](docs/memory-clocking-issue.md).
+See [investigation](docs/investigation.md), [benchmarks](docs/benchmarks.md) (including two Flash-Next workload comparisons), [driver patch](docs/driver-patch.md), [prototype audit](experimental/README.md), and [known issue](docs/memory-clocking-issue.md).
 
 ## License
 
