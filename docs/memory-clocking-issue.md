@@ -103,3 +103,15 @@ The operator subsequently supplied a **10-second sampling trace** from the Gen2 
 **Interpretation:** Under Gen2 unlock, the card can enter P0 at a high SM clock yet remain at its idle 405 MHz VRAM clock during sustained activity. At least one recovery occurred with utilization at 0%, and a subsequent request reproduced the problem. The last high-frequency sample does *not* establish precisely when or why the transition happened, given the 10-second interval.
 
 **Hypothesis, not demonstrated mechanism:** GPU driver/firmware P-state/VRAM-clock transitions may interact with the PCIe Gen2 declaration and retrain procedure. The repeated successful Gen1 control and Gen2 A-return reproduction support association, not identification of the precise register or component responsible.
+
+## CUDA keepalive experiment (2026-11-26, ~21:09–21:39)
+
+The operator tested a lightweight CUDA keepalive in CT100 targeting the P104 (CUDA1) while keeping Gen2 x4 enabled. The simple helper repeatedly copies 8 MiB within GPU device memory at nominal 200 ms intervals.
+
+- Under keepalive, P104 remained in **P0, 1,607 MHz SM / 5,005 MHz VRAM**, even with **0% GPU utilization**, drawing approximately **38.8–39.2 W** at the board; wall-system idle consumption reportedly increased **58 W → 91 W** (**+33 W**).
+- A prolonged supplied telemetry log covering approximately **21:09–21:19** shows persistently high VRAM clock, including during sustained inference beginning ~21:13. The operator reported **no 405 MHz failures** while keepalive was in effect.
+- Following a longer wait with the card observed back in **P8 (139 MHz SM / 405 MHz VRAM, ~5.6–5.8 W)** at 21:38:42–21:38:56, a subsequent inference request immediately entered **P0 at 1,911 MHz SM but only 405 MHz VRAM**, 100% GPU utilization. Samples at 21:38:58 through 21:39:12 remained wrong-clock at **~35–66 W**. The exact keepalive stop time was not supplied.
+
+These observations support (but do not prove) a **low-power-to-active memory-clock transition** issue in the Gen2-unlocked configuration. A continuously active CUDA context or high memory clock can apparently avoid the symptom, at the cost of approximately **33 W more wall-system idle power**. The experiment does **not** distinguish the effects of the helper's work, CUDA context residency, and persistent P0 state. It is not yet a practical energy-efficient workaround.
+
+Further tests should avoid changing kernel registers during active workloads. A short pre-inference warm-up might help but must be evaluated separately: a failed P8→P0 transition may not be corrected once a request is in progress.
