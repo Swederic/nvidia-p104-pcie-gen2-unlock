@@ -2,7 +2,7 @@
 
 An experimental, documented method for running an NVIDIA P104-100 mining GPU at **PCIe Gen2 x4** instead of its observed **Gen1 x4** operating mode on a Linux/Proxmox host.
 
-> **Status:** Gen2 x4 operation has been demonstrated on one specific system, including reboot-time automation and a measured transfer-rate improvement. **This is not a universal or validated driver patch.** An intermittent GPU memory-clock issue remains unresolved. No source code or binary patches are included until the exact working files have been reviewed.
+> **Status:** Gen2 x4 operation has been demonstrated on one specific system, including reboot-time automation and a measured transfer-rate improvement. **This is not a universal or validated driver patch.** An intermittent GPU memory-clock issue remains unresolved. The host-supplied prototype sources are archived under [experimental/](experimental/README.md) **for review only**; the proprietary NVIDIA driver patch and any patched binaries are **not** included.
 
 ## Demonstrated result
 
@@ -37,7 +37,7 @@ The prototype has **three distinct parts**, all required by the tested setup:
 
 A boot-time script (`p104-gen2-boot`) validates the expected driver/kernel environment, locates a **unique** P104 by PCI ID rather than a hardcoded bus address, identifies the upstream bridge, runs the two modules in order, and verifies that the negotiated link is Gen2 x4. A systemd service runs this sequence before starting the Strata container.
 
-**Important:** The actual source, precise patch offsets, pre/post hashes, register operations, and boot-script implementation must be copied from and audited against the working host. This README deliberately does not invent installation commands for those steps.
+**Important:** The original host-supplied kernel and boot sources are now in [experimental/](experimental/README.md). They are **not** vetted installation instructions. The NVIDIA binary patch script, exact offsets, and full pre/post validation evidence are still missing; this README deliberately does not invent them.
 
 ## Verification
 
@@ -68,7 +68,7 @@ A separate llama.cpp benchmark successfully reached 5,005 MHz on the P104; an au
 ## Repository roadmap
 
 - [x] Publish the initial method and measured observations
-- [ ] Audit and import the exact working kernel-module sources
+- [x] Archive the host-supplied kernel-module sources for review (not a supported release)\n- [ ] Audit and harden error handling in the archived sources
 - [ ] Audit and import an exact-version, hash-checked patch script (no patched NVIDIA binaries)
 - [ ] Audit and import the boot script and systemd unit
 - [ ] Document rollback and boot recovery
