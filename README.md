@@ -31,13 +31,13 @@ These observations do not establish compatibility with other P104 revisions, boa
 
 The prototype has **three distinct parts**, all required by the tested setup:
 
-1. A **two-byte, version-specific patch** to the locally installed NVIDIA kernel driver binary to prevent the observed Gen1 restriction.
+1. A **two-byte, version-specific patch** to the locally installed NVIDIA kernel driver binary to prevent the observed Gen1 restriction. The patch mechanism and exact verified hashes are now documented in [driver-patch.md](docs/driver-patch.md), with a [strict version-pinned helper](scripts/p104-driver-patch.py).
 2. A kernel module (`p104declare.c`) that modifies the relevant PCIe configuration/MMIO state.
 3. A second kernel module (`p104train.c`) that requests another link retraining operation after the declaration step.
 
 A boot-time script (`p104-gen2-boot`) validates the expected driver/kernel environment, locates a **unique** P104 by PCI ID rather than a hardcoded bus address, identifies the upstream bridge, runs the two modules in order, and verifies that the negotiated link is Gen2 x4. A systemd service runs this sequence before starting the Strata container.
 
-**Important:** The original host-supplied kernel and boot sources are now in [experimental/](experimental/README.md). They are **not** vetted installation instructions. The NVIDIA binary patch script, exact offsets, and full pre/post validation evidence are still missing; this README deliberately does not invent them.
+**Important:** The original host-supplied kernel and boot sources are now in [experimental/](experimental/README.md). They are **not** vetted installation instructions. The exact two-byte patch, original-hash expectation and observed patched hash have now been documented. The original NVIDIA binary was not supplied for independent recomputation; the version-pinned helper refuses any hash mismatch.
 
 ## Verification
 
@@ -69,7 +69,7 @@ A separate llama.cpp benchmark successfully reached 5,005 MHz on the P104; an au
 
 - [x] Publish the initial method and measured observations
 - [x] Archive the host-supplied kernel-module sources for review (not a supported release)\n- [ ] Audit and harden error handling in the archived sources
-- [ ] Audit and import an exact-version, hash-checked patch script (no patched NVIDIA binaries)
+- [x] Document the two-byte patch and add a strict hash-checked helper (no patched NVIDIA binaries)\n- [ ] Validate the helper end-to-end on the verified test host and during clean recovery
 - [ ] Audit and import the boot script and systemd unit
 - [ ] Document rollback and boot recovery
 - [ ] Test Gen1 versus Gen2 with the same Strata version and model
