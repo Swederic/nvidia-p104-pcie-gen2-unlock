@@ -1,0 +1,17 @@
+[Unit]
+Description=Unlock NVIDIA P104 PCIe Gen2 x4 and start Strata
+After=pve-cluster.service pve-guests.service
+Wants=pve-guests.service
+Requires=pve-cluster.service
+ConditionPathExists=/root/p104-gen2-v10-declare/p104declare.ko
+ConditionPathExists=/root/p104-gen2-v10-train/p104train.ko
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/p104-gen2-boot
+RemainAfterExit=yes
+TimeoutStartSec=120
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
