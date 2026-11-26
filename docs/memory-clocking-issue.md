@@ -130,3 +130,21 @@ A 2–3 second CUDA keepalive run successfully raised the memory clock from **40
 ```
 
 **Inference:** A short warm-up provides no persistent protection once the GPU has returned to P8. A useful follow-up is to keep the helper active until **Strata itself has entered active inference and P104 memory is confirmed at 5,005 MHz**, then stop the helper *while inference continues* and monitor whether the memory clock stays high. This last handoff experiment is proposed, **not yet demonstrated**. No register changes are required.
+
+## Strata-native short-request priming (2026-11-26, 22:03)
+
+The operator observed that issuing a **very short Strata request** (e.g. "1+1") immediately after P104 idled at P8/405 MHz can produce a delayed clock recovery **after that request completes**. A second request started while VRAM stayed at 5,005 MHz then ran at the normal clock:
+
+```text
+22:03:20 P8  139 MHz  405 MHz   5.62 W    0%
+22:03:22 P0 1771 MHz  405 MHz  30.37 W  100%  short request
+22:03:24 P0 1911 MHz  405 MHz  41.34 W  100%
+22:03:26 P0 1911 MHz  405 MHz  25.65 W  100%
+22:03:28 P0 1911 MHz  405 MHz  25.41 W    0%
+22:03:30 P0 1607 MHz 5005 MHz  38.81 W    0%  post-request recovery
+22:03:32 P0 1607 MHz 5005 MHz  38.81 W    0%
+22:03:34 P0 1911 MHz 5005 MHz  62.08 W  100%  next request
+22:03:36 P0 1911 MHz 5005 MHz  48.52 W    0%
+```
+
+This suggests **request-triggered priming within Strata itself** may be more practical than continuous external CUDA keepalive. Potential future implementation: only on demand, issue a small internal request, verify that VRAM reaches 5,005 MHz, and immediately relay the real request. Idle draw can remain low between requests; the transient start-up delay and power cost must be measured. This was a **single reported sequence**, not proof of reliable priming across all model states or request intervals, and it requires a way to reliably identify when the primary request is queued.
