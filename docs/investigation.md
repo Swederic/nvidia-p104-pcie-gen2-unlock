@@ -43,3 +43,37 @@ A cold-boot check confirmed that the startup procedure restored **Gen2 x4**. The
 ## Before writing installation instructions
 
 The exact patch script, SHA-256 checks, original module hash, kernel code, and service ordering must be extracted from the running host and independently audited. In particular, register values and patch offsets must not be reconstructed from narrative descriptions.
+
+## Cold-boot verification (2026-11-26)
+
+The operator supplied **two complete boot-service logs**, one from the running configuration before a deliberate cold-start and one after. These are observations on the same host, not independent-machine validation.
+
+| Event | Before cold start (16:19) | After cold start (18:34) |
+| --- | --- | --- |
+| NVIDIA module and kernel-module checks | Passed | Passed |
+| P104 and upstream root port | `0000:02:00.0` / `0000:00:02.0` | Same |
+| Link after v6 declaration | Gen1 x4 (`speed=1 width=4`) | Gen1 x4 (`speed=1 width=4`) |
+| Additional v7 retrain requested | Yes | Yes |
+| Service reported Gen2 x4 | 16:19:32 | 18:34:51 |
+| CT101 (Strata) started successfully | 16:19:35 | 18:34:54 |
+| Independent `lspci` negotiated link | `LnkSta: Speed 5GT/s, Width x4` | `LnkSta: Speed 5GT/s, Width x4` |
+
+The post-cold-start service began at **18:34:45** and finished at **18:34:54**, with a successful Gen2 x4 check **before** CT101 was started. This confirms the intended ordering for this tested boot, while not establishing reliability across other hardware or driver revisions.
+
+The v6 step deliberately did **not** finish at Gen2 on either recorded boot; the subsequent v7 root-port retrain was necessary in both recorded sequences.
+
+### Key post-cold-start log excerpt
+
+```text
+Nov 26 18:34:45 P104-GEN2: NVIDIA patch and kernel modules verified
+Nov 26 18:34:45 P104-GEN2: P104 found at 0000:02:00.0, upstream 0000:00:02.0
+Nov 26 18:34:49 P104-GEN2: After v6: speed=1 width=4
+Nov 26 18:34:49 P104-GEN2: Requesting additional root-port retrain (v7)
+Nov 26 18:34:51 P104-GEN2: SUCCESS: PCIe Gen2 x4 established
+Nov 26 18:34:54 P104-GEN2: CT101 started successfully
+```
+
+```text
+LnkCap: Port #0, Speed 5GT/s, Width x4
+LnkSta: Speed 5GT/s, Width x4
+```
