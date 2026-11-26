@@ -2,11 +2,13 @@
 
 The original code and scripts must be obtained from the test host and reviewed. Do **not** substitute reconstructed code.
 
-- [ ] Copy `/root/p104-gen2-v10-declare/p104declare.c`
-- [ ] Copy `/root/p104-gen2-v10-train/p104train.c`
-- [ ] Copy `/usr/local/sbin/p104-gen2-boot`
-- [ ] Copy the text of `p104-gen2.service`
-- [x] Review all four historical scripts and document the exact two-byte patch\n- [x] Confirm original expected SHA and observed patched SHA; provide strict version-pinned helper\n- [ ] Run the new helper's read-only check on x99 and verify end-to-end apply/revert on a safely recoverable test setup
+- [x] Archive `/root/p104-gen2-v10-declare/p104declare.c`
+- [x] Archive `/root/p104-gen2-v10-train/p104train.c`
+- [x] Archive `/usr/local/sbin/p104-gen2-boot`
+- [x] Archive the text of `p104-gen2.service`
+- [x] Review all four historical scripts and document the exact two-byte patch
+- [x] Confirm original expected SHA and observed patched SHA; provide strict version-pinned helper
+- [ ] Run the new helper's read-only check on x99 and verify end-to-end apply/revert on a safely recoverable test setup
 - [ ] Confirm every PCIe/MMIO register access and the intended GPU/root port
 - [ ] Replace environment-specific paths, hostnames, and BDFs where necessary
 - [ ] Remove accidental credentials, tokens, personal paths, and debug artifacts
