@@ -83,3 +83,23 @@ The **first reported Strata inference attempt** after returning to Gen2 reproduc
 **A–B–A summary:** A (Gen2): anomalous clock state reproduced previously; B (Gen1 with the same patched driver): no anomalous state in repeated trials while allowing VRAM to idle before each test; A (Gen2 restored): abnormal state **on the first attempt**. This substantially strengthens the association with the Gen2 unlock **procedure/configuration**, but does **not** isolate whether the causal factor is the link speed itself, declaration MMIO edits, retrain sequence, or a driver/firmware interaction. Refrain from describing the link speed alone as proven cause.
 
 The Gen2 procedure should be considered **unreliable for Strata inference on this particular system** until the cause is identified.
+
+## Extended trace: recovery at workload phase boundary (2026-11-26, 20:54–20:58)
+
+The operator subsequently supplied a **10-second sampling trace** from the Gen2 A-return run. The low-clock behavior was *not persistent for the whole inference session*. The operator reports that VRAM clock recovered after completion of prompt processing. This is consistent with the first observed idle-to-high-clock transition, but prompt/decode boundary times were not separately logged.
+
+| Time | P-state | SM MHz | VRAM MHz | GPU util. | Board W | Note |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| 20:55:22 | P8 | 139 | 405 | 0% | 5.71 | Idle before work |
+| 20:55:32–20:56:22 | P0 | 1911 | **405** | 100% | 40.85–47.90 | Wrong memory clock throughout sampled active interval |
+| 20:56:32 | P0 | 1607 | **5005** | 0% | 39.14 | Frequency recovered as utilization dropped |
+| 20:56:52–20:57:02 | P0 | 1898–1911 | 5005 | 100% | 84.44–94.00 | Active work at normal memory clock |
+| 20:57:42 | P8 | 139 | 405 | 0% | 5.95 | Returned to idle |
+| 20:57:52–20:58:02 | P0 | 1898 | **405** | 100% | 42.44–42.95 | Fault recurs on next busy phase |
+| 20:58:12–20:58:22 | P0 | 1898 | 405 | 0% | 25.07 | Utilization ceased, still low memory clock |
+| 20:58:32 | P8 | 139 | 405 | 0% | 5.95 | Idle |
+| 20:58:42 | P0 | 1898 | **5005** | 100% | 140.12 | Later active sample at normal clock |
+
+**Interpretation:** Under Gen2 unlock, the card can enter P0 at a high SM clock yet remain at its idle 405 MHz VRAM clock during sustained activity. At least one recovery occurred with utilization at 0%, and a subsequent request reproduced the problem. The last high-frequency sample does *not* establish precisely when or why the transition happened, given the 10-second interval.
+
+**Hypothesis, not demonstrated mechanism:** GPU driver/firmware P-state/VRAM-clock transitions may interact with the PCIe Gen2 declaration and retrain procedure. The repeated successful Gen1 control and Gen2 A-return reproduction support association, not identification of the precise register or component responsible.
