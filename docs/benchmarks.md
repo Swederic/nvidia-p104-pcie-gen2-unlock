@@ -102,5 +102,18 @@ The exact short CUDA source used for this test is archived at [benchmarks/pcie-b
 - `CUDA0`: GTX 1080, `CUDA1`: P104-100 at the time of testing.
 - Three repeated measurements show very little variability on P104.
 - The GTX 1080 link was **previously** observed as Gen3 x16; its `LnkSta` was not rechecked in this specific test.
-- A dedicated **Gen1 x4 CUDA measurement using the same code** remains outstanding. Earlier ~0.8 GB/s figures came from Strata and are **not** directly interchangeable with the new CUDA copy benchmark.
+- A dedicated **Gen1 x4 CUDA measurement using the same code** has now been completed (see results below). Earlier ~0.8 GB/s figures came from Strata and are separate observations.
 - These tests measure **transfer throughput**, not inference speedup, latency or energy efficiency.
+
+### Matched Gen1 x4 baseline with the same CUDA program
+
+With the automatic Gen2 service disabled and after a full power-down/start, the P104 showed both `LnkCap: Speed 2.5GT/s, Width x4` and `LnkSta: Speed 2.5GT/s, Width x4`. Strata CT101 remained stopped. The same `pcie-bandwidth` binary and CUDA1 P104 were tested three times:
+
+| Direction | Gen1 run 1 | Gen1 run 2 | Gen1 run 3 | Gen1 mean | Gen2 mean | Gen2 / Gen1 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Host → GPU | 0.811 | 0.812 | 0.812 | **0.8117 GB/s** | **1.6263 GB/s** | **2.004×** |
+| GPU → Host | 0.855 | 0.855 | 0.855 | **0.8550 GB/s** | **1.7077 GB/s** | **1.997×** |
+
+This matched comparison demonstrates approximately **2× actual one-way CUDA transfer throughput** on the tested P104 when the Gen2 unlock procedure is enabled. The NVIDIA driver binary remained patched in the Gen1 control; the changed variable was boot-time PCIe declaration/retraining, verified by `LnkSta`. This establishes the benefit of the procedure under test, not independent compatibility with other hardware or with the unmodified NVIDIA driver.
+
+**Restore note:** after the Gen1 test, re-enable `p104-gen2.service`, perform a controlled power-down/start with no active CUDA work, and confirm `LnkSta: Speed 5GT/s, Width x4` and correct CT101 startup before returning to normal use. This restoration has not yet been confirmed by a new log.
