@@ -115,3 +115,18 @@ The operator tested a lightweight CUDA keepalive in CT100 targeting the P104 (CU
 These observations support (but do not prove) a **low-power-to-active memory-clock transition** issue in the Gen2-unlocked configuration. A continuously active CUDA context or high memory clock can apparently avoid the symptom, at the cost of approximately **33 W more wall-system idle power**. The experiment does **not** distinguish the effects of the helper's work, CUDA context residency, and persistent P0 state. It is not yet a practical energy-efficient workaround.
 
 Further tests should avoid changing kernel registers during active workloads. A short pre-inference warm-up might help but must be evaluated separately: a failed P8→P0 transition may not be corrected once a request is in progress.
+
+## Short warm-up with an idle gap fails (2026-11-26, 21:58)
+
+A 2–3 second CUDA keepalive run successfully raised the memory clock from **405 to 5,005 MHz**. However, the helper had stopped before Strata began the next request, and the card returned to **P8 / 405 MHz** within approximately two seconds. Twelve seconds later the Strata request ran at **P0 / 1,911 MHz SM / 405 MHz VRAM**, with 100% GPU utilization, for multiple samples.
+
+```text
+21:58:30 P8  139 MHz  405 MHz   5.71 W    0%
+21:58:32 P0 1607 MHz  405 MHz  17.59 W    0%  CUDA warm-up
+21:58:34 P0 1202 MHz 5005 MHz  33.72 W    0%  Warm-up succeeded
+21:58:36 P8  265 MHz  405 MHz   6.05 W    0%  Returned to idle
+21:58:48 P0 1911 MHz  405 MHz  41.56 W  100%  Strata stuck at low VRAM clock
+21:58:54 P0 1911 MHz  405 MHz  41.58 W  100%
+```
+
+**Inference:** A short warm-up provides no persistent protection once the GPU has returned to P8. A useful follow-up is to keep the helper active until **Strata itself has entered active inference and P104 memory is confirmed at 5,005 MHz**, then stop the helper *while inference continues* and monitor whether the memory clock stays high. This last handoff experiment is proposed, **not yet demonstrated**. No register changes are required.
