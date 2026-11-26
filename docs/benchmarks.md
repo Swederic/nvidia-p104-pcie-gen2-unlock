@@ -77,3 +77,30 @@ Compared with GTX 1080 alone, adding P104 reduced prefill by **51.9%**, reduced 
 - Multiple GPUs can help when prompt processing dominates but hurt when generation dominates, particularly if communication and cache/offload behavior add overhead.
 - **User-confirmed:** The P104 ran at its normal **5,005 MHz memory clock during all benchmark runs**. The separate intermittent 405 MHz Strata issue therefore does **not** explain these throughput results. Individual clock traces were not supplied with this comparison; the clock confirmation is from the tester. Multi-GPU split, cache/offload scheduling, communication overhead and workload characteristics remain possible explanations.
 - Planned comparison: repeat both workloads using GTX 1080 + GTX 1070, with identical Strata/Flash-Next versions, quantization, context and GPU/cache settings, and monitor clocks, power and run-to-run variance.
+
+## Independent CUDA PCIe transfer benchmark (2026-11-26)
+
+After a confirmed cold boot and successful automatic PCIe unlock, `lspci` reported **`LnkSta: Speed 5GT/s, Width x4`** for the P104. Strata CT101 was shut down; the benchmark ran in CT100 with CUDA 12.9 and no active Strata inference.
+
+A small custom CUDA program used a **64 MiB pinned host buffer** and **64 MiB device buffer**, copied **50 times per direction**, warmed up each transfer direction, and measured elapsed time with CUDA events. Bandwidth uses decimal GB/s. The loop measures repeated one-direction transfers, *not simultaneous bidirectional PCIe throughput*.
+
+### Measurements
+
+| Device and direction | Run 1 | Run 2 | Run 3 | Mean | Range |
+| --- | ---: | ---: | ---: | ---: | --- |
+| P104-100 Gen2 x4: host → GPU | 1.626 | 1.627 | 1.626 | **1.626 GB/s** | 1.626–1.627 |
+| P104-100 Gen2 x4: GPU → host | 1.708 | 1.708 | 1.707 | **1.708 GB/s** | 1.707–1.708 |
+| GTX 1080 (previously observed Gen3 x16): host → GPU | 12.046 | 12.187 | 12.192 | **12.142 GB/s** | 12.046–12.192 |
+| GTX 1080 (previously observed Gen3 x16): GPU → host | 12.298 | 12.034 | 11.836 | **12.056 GB/s** | 11.836–12.298 |
+
+The P104 reaches approximately **81.3%** (host → GPU) and **85.4%** (GPU → host) of Gen2 x4's nominal **2.0 GB/s per-direction line payload budget before protocol overhead**. In these measurements GTX 1080 has approximately **7.47×** faster host → GPU transfers and **7.06×** faster GPU → host transfers.
+
+### Test reproducibility and caveats
+
+The test's methodology is preserved here, but the short CUDA source has not yet been copied into this repository; reproducing these exact values should use the same pinned buffer and timing method.
+
+- `CUDA0`: GTX 1080, `CUDA1`: P104-100 at the time of testing.
+- Three repeated measurements show very little variability on P104.
+- The GTX 1080 link was **previously** observed as Gen3 x16; its `LnkSta` was not rechecked in this specific test.
+- A dedicated **Gen1 x4 CUDA measurement using the same code** remains outstanding. Earlier ~0.8 GB/s figures came from Strata and are **not** directly interchangeable with the new CUDA copy benchmark.
+- These tests measure **transfer throughput**, not inference speedup, latency or energy efficiency.
