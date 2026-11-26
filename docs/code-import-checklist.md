@@ -6,7 +6,7 @@ The original code and scripts must be obtained from the test host and reviewed. 
 - [ ] Copy `/root/p104-gen2-v10-train/p104train.c`
 - [ ] Copy `/usr/local/sbin/p104-gen2-boot`
 - [ ] Copy the text of `p104-gen2.service`
-- [ ] Locate the exact driver patch script and confirm its pre/post SHA-256 checks
+- [x] Review all four historical scripts and document the exact two-byte patch\n- [x] Confirm original expected SHA and observed patched SHA; provide strict version-pinned helper\n- [ ] Run the new helper's read-only check on x99 and verify end-to-end apply/revert on a safely recoverable test setup
 - [ ] Confirm every PCIe/MMIO register access and the intended GPU/root port
 - [ ] Replace environment-specific paths, hostnames, and BDFs where necessary
 - [ ] Remove accidental credentials, tokens, personal paths, and debug artifacts
